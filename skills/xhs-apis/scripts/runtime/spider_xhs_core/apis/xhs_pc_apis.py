@@ -20,10 +20,23 @@ _SCRAPE_METHODS = {
     "get_user_all_notes", "get_user_all_like_note_info", "get_user_all_collect_note_info",
 }
 
+# 冷启动检测：距上次 scrape 超过此秒数，视为冷启动
+_COLD_START_WINDOW = 300
+# 冷启动时的短等待范围
+_COLD_START_DELAY = (2, 5)
+
+_last_scrape_ts = 0.0
+
 
 def _rate_limit(method_name):
+    global _last_scrape_ts
+
     if method_name in _SCRAPE_METHODS:
         low, high = _RATE_LIMIT_CFG["scrape"]
+        now = time.time()
+        if _last_scrape_ts == 0 or (now - _last_scrape_ts) > _COLD_START_WINDOW:
+            low, high = _COLD_START_DELAY
+        _last_scrape_ts = now
     elif method_name.startswith("search") or method_name == "get_search_keyword":
         low, high = _RATE_LIMIT_CFG["search"]
     else:

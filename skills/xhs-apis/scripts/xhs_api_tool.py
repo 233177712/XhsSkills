@@ -172,6 +172,16 @@ def _normalize_payload(namespaces, namespace, method, signature, payload):
     return payload
 
 
+def _safe_print(obj):
+    """Print JSON to console, safely handling UnicodeEncodeError (emoji in GBK terminals)."""
+    text = json.dumps(obj, ensure_ascii=False, indent=2)
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback: replace unsupported characters
+        print(text.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
+
+
 def _write_output(path_value, data):
     path = Path(path_value)
     if not path.is_absolute():
@@ -216,14 +226,14 @@ def main():
         response = {
             "error": str(exc),
         }
-        print(json.dumps(response, ensure_ascii=False, indent=2))
+        _safe_print(response)
         raise SystemExit(1)
 
     if args.command == "list":
         result = _list_methods(namespaces)
         if args.out:
             _write_output(args.out, result)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        _safe_print(result)
         return
 
     try:
@@ -243,12 +253,12 @@ def main():
             "method": args.method,
             "error": str(exc),
         }
-        print(json.dumps(response, ensure_ascii=False, indent=2))
+        _safe_print(response)
         raise SystemExit(1)
 
     if args.out:
         _write_output(args.out, response)
-    print(json.dumps(response, ensure_ascii=False, indent=2))
+    _safe_print(response)
 
 
 if __name__ == "__main__":
