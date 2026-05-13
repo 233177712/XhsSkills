@@ -180,6 +180,21 @@ def _write_output(path_value, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+_URL_METHODS = {"get_note_info", "get_note_all_comment"}
+
+
+def _validate_url_payload(namespace, method, payload):
+    """检查 URL 类方法是否包含完整的 xsec_token 参数。"""
+    if namespace != "pc" or method not in _URL_METHODS:
+        return
+    url = payload.get("url", "")
+    if "xsec_token=" not in url:
+        raise ValueError(
+            f"[xhs-apis] URL 缺少 xsec_token 参数，请使用飞书表格中的完整链接。\n"
+            f"  原始 URL: {url}"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Call vendored XHS APIs from the xhs-apis skill.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -215,6 +230,7 @@ def main():
         payload = _read_json_arg(args.params, args.params_file)
         target, signature = _resolve_callable(namespaces, args.namespace, args.method)
         payload = _normalize_payload(namespaces, args.namespace, args.method, signature, payload)
+        _validate_url_payload(args.namespace, args.method, payload)
         result = target(**payload)
         response = {
             "namespace": args.namespace,
