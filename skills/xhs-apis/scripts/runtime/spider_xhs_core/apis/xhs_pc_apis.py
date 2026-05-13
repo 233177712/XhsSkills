@@ -1,10 +1,36 @@
 # encoding: utf-8
 import json
+import random
 import re
+import time
 import urllib
 import requests
 from xhs_utils.xhs_util import splice_str, generate_request_params, generate_x_b3_traceid, get_common_headers
 from loguru import logger
+
+_RATE_LIMIT_CFG = {
+    "scrape": (110, 130),
+    "search": (3, 6),
+    "light": (0.5, 1.5),
+}
+
+_SCRAPE_METHODS = {
+    "get_note_info", "get_note_all_comment",
+    "get_note_all_out_comment", "get_note_all_inner_comment",
+    "get_user_all_notes", "get_user_all_like_note_info", "get_user_all_collect_note_info",
+}
+
+
+def _rate_limit(method_name):
+    if method_name in _SCRAPE_METHODS:
+        low, high = _RATE_LIMIT_CFG["scrape"]
+    elif method_name.startswith("search") or method_name == "get_search_keyword":
+        low, high = _RATE_LIMIT_CFG["search"]
+    else:
+        low, high = _RATE_LIMIT_CFG["light"]
+    delay = random.uniform(low, high)
+    logger.info(f"[rate-limit] {method_name}: sleep {delay:.1f}s")
+    time.sleep(delay)
 
 """
     获小红书的api
@@ -23,6 +49,7 @@ class XHS_Apis():
         try:
             api = "/api/sns/web/v1/homefeed/category"
             headers, cookies, data = generate_request_params(cookies_str, api, '', 'GET')
+            _rate_limit("get_homefeed_all_channel")
             response = requests.get(self.base_url + api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -63,6 +90,7 @@ class XHS_Apis():
                 "need_filter_image": False
             }
             headers, cookies, trans_data = generate_request_params(cookies_str, api, data, 'POST')
+            _rate_limit("get_homefeed_recommend")
             response = requests.post(self.base_url + api, headers=headers, data=trans_data, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -117,6 +145,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_user_info")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -135,6 +164,7 @@ class XHS_Apis():
         try:
             api = f"/api/sns/web/v1/user/selfinfo"
             headers, cookies, data = generate_request_params(cookies_str, api, '', 'GET')
+            _rate_limit("get_user_self_info")
             response = requests.get(self.base_url + api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -154,6 +184,7 @@ class XHS_Apis():
         try:
             api = f"/api/sns/web/v2/user/me"
             headers, cookies, data = generate_request_params(cookies_str, api, '', 'GET')
+            _rate_limit("get_user_self_info2")
             response = requests.get(self.base_url + api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -183,6 +214,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_user_note_info")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -246,6 +278,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_user_like_note_info")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -309,6 +342,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_user_collect_note_info")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -380,6 +414,7 @@ class XHS_Apis():
                 "xsec_token": kvDist['xsec_token']
             }
             headers, cookies, data = generate_request_params(cookies_str, api, data, 'POST')
+            _rate_limit("get_note_info")
             response = requests.post(self.base_url + api, headers=headers, data=data, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -404,6 +439,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_search_keyword")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -511,6 +547,7 @@ class XHS_Apis():
                 ]
             }
             headers, cookies, data = generate_request_params(cookies_str, api, data, 'POST')
+            _rate_limit("search_note")
             response = requests.post(self.base_url + api, headers=headers, data=data.encode('utf-8'), cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -576,6 +613,7 @@ class XHS_Apis():
                 }
             }
             headers, cookies, data = generate_request_params(cookies_str, api, data, 'POST')
+            _rate_limit("search_user")
             response = requests.post(self.base_url + api, headers=headers, data=data.encode('utf-8'), cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -633,6 +671,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_note_out_comment")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -690,6 +729,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_note_inner_comment")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -763,6 +803,7 @@ class XHS_Apis():
         try:
             api = "/api/sns/web/unread_count"
             headers, cookies, data = generate_request_params(cookies_str, api, '', 'GET')
+            _rate_limit("get_unread_message")
             response = requests.get(self.base_url + api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -787,6 +828,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_metions")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -837,6 +879,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_likesAndcollects")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -887,6 +930,7 @@ class XHS_Apis():
             }
             splice_api = splice_str(api, params)
             headers, cookies, data = generate_request_params(cookies_str, splice_api, '', 'GET')
+            _rate_limit("get_new_connections")
             response = requests.get(self.base_url + splice_api, headers=headers, cookies=cookies, proxies=proxies)
             res_json = response.json()
             success, msg = res_json["success"], res_json["msg"]
@@ -934,6 +978,7 @@ class XHS_Apis():
         try:
             headers = get_common_headers()
             url = f"https://www.xiaohongshu.com/explore/{note_id}"
+            _rate_limit("get_note_no_water_video")
             response = requests.get(url, headers=headers)
             res = response.text
             video_addr = re.findall(r'<meta name="og:video" content="(.*?)">', res)[0]
