@@ -231,20 +231,13 @@ class XHS_Creator_Apis():
             data = get_post_note_image_data(title, desc, postTime, post_loc, type, fileInfos)
         topics = noteInfo['topics']
         for topic in topics:
-            success, msg, res_json = self.get_topic(topic, cookies)
-            if not success:
-                raise Exception(msg)
-            if len(res_json['data']['topic_info_dtos']) == 0:
-                raise Exception(f'未找到话题{topic}')
-            insert_topic = res_json['data']['topic_info_dtos'][0]
-            insert_topic = {
-                "id": insert_topic['id'],
-                "link": insert_topic['link'],
-                "name": insert_topic['name'],
-                "type": 'topic'
-            }
-            data['common']['hash_tag'].append(insert_topic)
-            data['common']['desc'] += f" #{insert_topic['name']}[话题]# "
+            if not topic:
+                continue
+            data['common']['hash_tag'].append({
+                "name": topic,
+                "type": "topic"
+            })
+            data['common']['desc'] += f" #{topic}[话题]# "
 
         # headers['x-s'] = xs
         # headers['x-t'] = str(int(time.time() * 1000))
